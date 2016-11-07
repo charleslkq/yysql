@@ -1,0 +1,96 @@
+--快捷礼物留存
+select 
+  '${date:y-m-d}' as dt,
+  c.platform,
+  if(c.flag=1,'快捷礼物首付用户','快捷礼物消费用户') as flag,
+  c.n_dt,
+  count(distinct if(c.retain_type=0,c.uid,null)) as d0_retain,
+  count(distinct if(c.retain_type=1,c.uid,null)) as d1_retain,
+  count(distinct if(c.retain_type=2,c.uid,null)) as d2_retain,
+  count(distinct if(c.retain_type=3,c.uid,null)) as d3_retain,
+  count(distinct if(c.retain_type=4,c.uid,null)) as d4_retain,
+  count(distinct if(c.retain_type=5,c.uid,null)) as d5_retain,
+  count(distinct if(c.retain_type=6,c.uid,null)) as d6_retain,
+  count(distinct if(c.retain_type=7,c.uid,null)) as d7_retain,
+  count(distinct if(c.retain_type=8,c.uid,null)) as d8_retain,
+  count(distinct if(c.retain_type=9,c.uid,null)) as d9_retain,
+  count(distinct if(c.retain_type=10,c.uid,null)) as d10_retain,
+  count(distinct if(c.retain_type=11,c.uid,null)) as d11_retain,
+  count(distinct if(c.retain_type=12,c.uid,null)) as d12_retain,
+  count(distinct if(c.retain_type=13,c.uid,null)) as d13_retain,
+  count(distinct if(c.retain_type=14,c.uid,null)) as d14_retain,
+  count(distinct if(c.retain_type=15,c.uid,null)) as d15_retain,
+  count(distinct if(c.retain_type=16,c.uid,null)) as d16_retain,
+  count(distinct if(c.retain_type=17,c.uid,null)) as d17_retain,
+  count(distinct if(c.retain_type=18,c.uid,null)) as d18_retain,
+  count(distinct if(c.retain_type=19,c.uid,null)) as d19_retain,
+  count(distinct if(c.retain_type=20,c.uid,null)) as d20_retain,
+  count(distinct if(c.retain_type=21,c.uid,null)) as d21_retain,
+  count(distinct if(c.retain_type=22,c.uid,null)) as d22_retain,
+  count(distinct if(c.retain_type=23,c.uid,null)) as d23_retain,
+  count(distinct if(c.retain_type=24,c.uid,null)) as d24_retain,
+  count(distinct if(c.retain_type=25,c.uid,null)) as d25_retain,
+  count(distinct if(c.retain_type=26,c.uid,null)) as d26_retain,
+  count(distinct if(c.retain_type=27,c.uid,null)) as d27_retain,
+  count(distinct if(c.retain_type=28,c.uid,null)) as d28_retain,
+  count(distinct if(c.retain_type=29,c.uid,null)) as d29_retain,
+  count(distinct if(c.retain_type=30,c.uid,null)) as d30_retain
+from
+(
+select
+  b.dt as n_dt,
+  b.platform,
+  b.flag,
+  datediff('${date:y-m-d}',b.dt) as retain_type,
+  a.uid
+from
+(select platform,uid    from entrevenue.entrevenue_fastgift_user_info_day where dt='${date:y-m-d}')a
+join 
+(
+select dt,platform,2 as flag,uid    from entrevenue.entrevenue_fastgift_user_info_day where dt>='${date-30:y-m-d}' and dt<='${date:y-m-d}'
+union all
+select dt,platform,1 as flag,uid    from entrevenue.entrevenue_fastgift_user_info_day where is_first=1 and  dt>='${date-30:y-m-d}' and dt<='${date:y-m-d}'
+)b
+on a.uid=b.uid and a.platform=b.platform
+)c
+group by c.platform,c.flag,c.n_dt
+
+
+
+select 
+n_dt,
+is_chn,
+type,
+is_new,
+max(d0_retain) as d0,
+round(max(d1_retain)/max(d0_retain),4)  as d1,
+round(max(d2_retain)/max(d0_retain),4)  as d2,
+round(max(d3_retain)/max(d0_retain),4)  as d3,
+round(max(d4_retain)/max(d0_retain),4)  as d4,
+round(max(d5_retain)/max(d0_retain),4)  as d5,
+round(max(d6_retain)/max(d0_retain),4)  as d6,
+round(max(d7_retain)/max(d0_retain),4)  as d7,
+round(max(d8_retain)/max(d0_retain),4)  as d8,
+round(max(d9_retain)/max(d0_retain),4)  as d9,
+round(max(d10_retain)/max(d0_retain),4)  as d10,
+round(max(d11_retain)/max(d0_retain),4)  as d11,
+round(max(d12_retain)/max(d0_retain),4)  as d12,
+round(max(d13_retain)/max(d0_retain),4)  as d13,
+round(max(d14_retain)/max(d0_retain),4)  as d14,
+round(max(d15_retain)/max(d0_retain),4)  as d15,
+round(max(d16_retain)/max(d0_retain),4)  as d16,
+round(max(d17_retain)/max(d0_retain),4)  as d17,
+round(max(d18_retain)/max(d0_retain),4)  as d18,
+round(max(d19_retain)/max(d0_retain),4)  as d19,
+round(max(d20_retain)/max(d0_retain),4)  as d20,
+round(max(d21_retain)/max(d0_retain),4)  as d21,
+round(max(d22_retain)/max(d0_retain),4)  as d22,
+round(max(d23_retain)/max(d0_retain),4)  as d23,
+round(max(d24_retain)/max(d0_retain),4)  as d24,
+round(max(d25_retain)/max(d0_retain),4)  as d25,
+round(max(d26_retain)/max(d0_retain),4)  as d26,
+round(max(d27_retain)/max(d0_retain),4)  as d27,
+round(max(d28_retain)/max(d0_retain),4)  as d28,
+round(max(d29_retain)/max(d0_retain),4)  as d29,
+round(max(d30_retain)/max(d0_retain),4)  as d30
+ from hiidodb.s_entrevenue_lkq_sjyy_ys_lc_rpt_day  group by n_dt,is_chn,type,is_new
