@@ -1,0 +1,193 @@
+------pcu
+set mapreduce.input.fileinputformat.split.minsize=134217728;
+set mapreduce.input.fileinputformat.split.maxsize=134217728;
+set mapreduce.input.fileinputformat.split.minsize.per.node=134217728;
+set mapreduce.input.fileinputformat.split.minsize.per.rack=134217728;
+create temporary function md5 as 'com.hiido.hive.udf.MD5';
+with t as 
+(select dt,CONCAT('2016-11-07 ',lpad(cast(HOUR as string),2,'0'),':',lpad(cast(FLOOR(MINUTE/15)*15 as string),2,'0'),':00') AS time,
+md5(CONCAT(IF(imei == '','hiidosdk_unknown_imei',imei),IF(mac == '','hiidosdk_unknown_mac',mac))) as flag,sid from default.yy_mbsdkdo_original
+where  dt= '20161107' 
+and appkey in ('51e048ad6f823e41847cd011483adf01','cf5e431339c6f686b188ed849c6e2af8'))
+
+select time,sum(pcu) as pcu,sum(v_pcu) as v_pcu,sum(renqi) as renqi,if(sum(sj_hiido_pcu)=0,null,
+sum(sj_hiido_pcu)) as sj_hiido_pcu from 
+(
+select p1.sid,p1.time,pcu,v_pcu,renqi,
+if(sj_hiido_pcu is null,0,sj_hiido_pcu) as sj_hiido_pcu from 
+
+(select sid,time,max(pcu) as pcu from yule.yule_anchor_pcu_original_day where dt='2016-11-07'
+group by sid,time) p1
+left outer join 
+(
+select sid,time,max(pcu) as v_pcu from yule.yule_video_sid_pcu_day   where dt='2016-11-07'
+group by sid,time) p2
+on  p1.sid=p2.sid and p1.time=p2.time
+left outer join 
+
+(select sid,time,max(renqi) as renqi from yule.yule_pcu_renqi   where dt='20161107' 
+group by sid,time) p3
+on p1.sid=p3.sid and p1.time=p3.time
+left outer join 
+
+(select sid,time,count(distinct flag) as sj_hiido_pcu from t group by sid,time) p4
+on p1.sid=p4.sid and p1.time=p4.time
+
+) a1
+left semi join 
+(select distinct sid from yule.yule_channel_type_day  where  dt='2016-11-07') a2
+on a1.sid=a2.sid group by time;
+
+
+
+insert overwrite table yule.yule_video_sid_pcu_day partition (dt='${date:y-m-d}')
+select uid,topsid as sid,concat(mm,':00') as time,sum(usercount) as pcu from 
+(select dt,substr(updatetime,0,16) as mm,appid,uid,if(topsid=0,sid,topsid) as topsid,type,max(usercount) as usercount from 
+yule.yule_video_current_spk_v2_info where dt='${date:ymd}' and substr(updatetime,0,16)>=concat(substr(dt,1,4),'-',substr(dt,5,2),'-',substr(dt,7,2),
+' 00:00') and substr(updatetime,0,16)<=concat(substr(dt,1,4),'-',substr(dt,5,2),'-',substr(dt,7,2),' 23:59')
+and substr(updatetime,0,16) like '____-__-_____:__' group by dt,substr(updatetime,0,16),appid,uid,if(topsid=0,sid,topsid),type) a1 group by 
+uid,topsid,concat(mm,':00');
+
+
+set mapreduce.input.fileinputformat.split.minsize=134217728;
+set mapreduce.input.fileinputformat.split.maxsize=134217728;
+set mapreduce.input.fileinputformat.split.minsize.per.node=134217728;
+set mapreduce.input.fileinputformat.split.minsize.per.rack=134217728;
+
+with kaibo_tb as 
+(select uid,channel as sid,substr(start_time,1,19) as s_time,
+substr(end_time,1,19) as e_time,duration as dr,type
+from yule.yule_lkq_live_all_detail_day  where  dt='${date:y-m-d}' and duration>0
+)
+
+
+insert overwrite table yule.yule_anchor_pcu_original_day partition (dt='${date:y-m-d}')
+select uid as anchorid,a.sid,type as sid_type,time,count(distinct suid) as pcu,
+count(distinct if(logtype=0,suid,null)) as pc_pcu,
+count(distinct if(logtype=1,suid,null)) as web_pcu,
+count(distinct if(logtype=2,suid,null)) as sj_pcu from 
+kaibo_tb a left outer join
+(select time,suid,sid,logtype from yule.yule_zyz_pcu_original_day where dt='${date:y-m-d}') b
+on a.sid=b.sid where time>=s_time and time<=e_time group by uid,a.sid,type,time;
+
+
+
+set mapred.job.queue.name = yulevip; 
+set mapreduce.input.fileinputformat.split.minsize=134217728;
+set mapreduce.input.fileinputformat.split.maxsize=134217728;
+set mapreduce.input.fileinputformat.split.minsize.per.node=134217728;
+set mapreduce.input.fileinputformat.split.minsize.per.rack=134217728;
+set mapred.output.compress=true;
+set hive.exec.compress.output=true;
+set mapred.output.compression.codec=org.apache.hadoop.io.compress.GzipCodec;
+insert overwrite table yule.yule_zyz_pcu_original_day partition (dt='${date:y-m-d}')
+select logtype,type,is_ent,sid,uid,suid,time,source from 
+(select 1 as key,logtype,type,is_ent,sid,uid,suid,from_unixtime(b_time,'yyyy-MM-dd HH:mm:ss') as b_time,
+from_unixtime(e_time,'yyyy-MM-dd HH:mm:ss') as e_time,source from  yule.yule_zyz_dr_original_day where dt='${date:y-m-d}'
+ and logtype in (0,1,2,3)) p2
+left outer join 
+(select 1 as key,concat('${date:y-m-d}',time) as time from yule.yule_zyz_time_info) p1
+on p1.key=p2.key 
+where p2.b_time<=time and p2.e_time>=time;
+
+
+
+--dau
+
+
+select b1.dt,pc_dau,pc_gj_uv,pc_gj_dau,sj_dau,sj_yule_dau,sj_gj_uv,sj_gj_dau,pc_uv,round(pc_uv/pc_dau,4) as pcx_rate from 
+
+(select '${date:y-m-d}' as dt, 
+count(distinct if(a1.logtype=0,a1.uid,null)) as pc_gj_uv,
+count(distinct if(a2.logtype=0,a2.suid,null)) as pc_gj_dau,
+count(distinct if(a1.logtype=2,a1.uid,null)) as sj_gj_uv,
+count(distinct if(a2.logtype=2,a2.suid,null)) as sj_gj_dau from 
+
+(select distinct 0 as logtype,uid from warehouse.tw_pcgj_day where dt='${date}') a1 
+
+left outer join 
+(select logtype,uid,suid from yule.yule_kpi_original_new where logtype in (0) and dt='${date:y-m-d}' group by logtype,uid,suid) a2
+
+on a1.uid=a2.uid and a1.logtype=a2.logtype) b1
+
+left outer join 
+(select '${date:y-m-d}' as dt,pc_dau,0 as sj_yule_dau,0 as sj_dau  from yule.yule_kpi_dau_new where dt='${date:y-m-d}') b2
+on b1.dt=b2.dt
+left outer join
+(select dt,pc_uv from yule.yule_video_dau_day where dt='${date:y-m-d}') b3
+on b1.dt=b3.dt;
+
+
+
+
+//logtype:0-pc娱乐 1-web娱乐 2-手机进频道 3-手机端原生活跃 4-手机联营  5-H5 6=pad
+//type: logtype=1,0=web联运 1=web官网 2=web其他; logtype=2,0=非娱乐频道 1=娱乐频道 ;logtype=3,0=ios 1=android
+set mapred.job.queue.name = yulevip; 
+set mapred.job.priority = VERY_HIGH; 
+set hive.exec.compress.output=true;
+set mapred.output.compression.codec=org.apache.hadoop.io.compress.GzipCodec;
+set mapreduce.input.fileinputformat.split.minsize=134217728;
+set mapreduce.input.fileinputformat.split.maxsize=134217728;
+set mapreduce.input.fileinputformat.split.minsize.per.node=134217728;
+set mapreduce.input.fileinputformat.split.minsize.per.rack=134217728;
+create temporary function urldecode  as 'com.hiido.hive.udf.URLDecodeUDF';
+create temporary function issjyylogin as 'com.hiido.hive.udf.GenericUDFJudgeSJYYUid';
+create temporary function iswebyylogin as 'com.hiido.hive.udf.GenericUDFJudgeWebYYUid';
+create temporary function md5 as 'com.hiido.hive.udf.MD5'; 
+
+with web_tb as 
+(select 1 as logtype,sid,uid,cast(uid as STRING) as suid,
+case when split(split(urldecode(source),'f=')[1],'&|#|\\?')[0]='311' then 0
+when split(urldecode(ref),'/')[2] like '%.yy.com' or split(urldecode(ref),'/')[2] like '%.m.yy.com' then 1
+else 2 end as type 
+from default.yy_webyyhb_original where dt='${date:ymd}' and isWebYYLogin(uid)=1 and sid>0  and split(urldecode(ref),'/')[2] like '%.yy.com' 
+union all
+select logtype,sid,uid,wyy as suid,type from
+(select logtype,uid,sid,t1.wyy,type from
+(select 1 as logtype,uid,sid,
+if(wyy is null or wyy='',concat(uid,'-',ip), wyy) as wyy,
+case when split(split(urldecode(source),'f=')[1],'&|#|\\?')[0]='311' then 0
+when split(urldecode(ref),'/')[2] like '%.yy.com' or split(urldecode(ref),'/')[2] like '%.m.yy.com' then 1 else 2 end as type
+ from default.yy_webyyhb_original where dt='${date:ymd}' and isWebYYLogin(uid)=0  and split(urldecode(ref),'/')[2] like '%.yy.com' and sid>0) t1
+left outer join
+(select if(wyy is null or wyy='',concat(uid,'-',ip), wyy) as wyy from default.yy_webyyhb_original where dt='${date:ymd}'  and split(urldecode(ref),'/')[2] like '%.yy.com' 
+and isWebYYLogin(uid)=1 and sid>0 group by if(wyy is null or wyy='',concat(uid,'-',ip), wyy)) t2
+on t1.wyy=t2.wyy where t2.wyy is null) t),
+
+mob_chn as 
+(select logtype,p1.sid,uid,suid,if(p2.sid is null,0,1) as type from 
+(select 2 as logtype,0 as sid,uid,md5(concat(if(imei == '','hiidosdk_unknown_imei',imei),if(mac == '','hiidosdk_unknown_mac',mac))) as suid
+ from yule.yule_sj_ver3_even_original_day 
+where dt='${date:y-m-d}' and cid in ('1907') and parm in ('0001','0002','0003','0004')
+union all
+select 2 as logtype,sid,uid,
+md5(concat(if(imei == '','hiidosdk_unknown_imei',imei),if(mac == '','hiidosdk_unknown_mac',mac)))
+ as suid from default.yy_sjyychannelin_original where  dt = '${date}') p1
+left outer join 
+(select distinct sid from yule.yule_channel_type_day  where  dt='${date:y-m-d}') p2
+on p1.sid=p2.sid )
+
+
+insert overwrite table yule.yule_kpi_original_new partition (dt='${date:y-m-d}')
+select logtype,sid,uid,suid,type from 
+(
+select if(product_id in (138,171),3,6) as logtype,sid,uid,key as suid,if(product_id=138,0,1) as type FROM hiidosdk.yy_mbsdkdo_original 
+where dt = '${date}' AND product_id in (138,171,317) and channel not in ('9001','9002','9003')
+union all 
+select 4 as logtype,sid,uid,key as suid,channel as type FROM hiidosdk.yy_mbsdkdo_original 
+where dt = '${date}' AND ((product_id in (138,171) and channel in ('9001','9002','9003')) or product_id in (24278))
+union all
+select logtype,sid,uid,suid,type from 
+(select 0 as logtype,topsid as sid,uid,cast(uid as STRING) as suid,0 as type from warehouse.ts_pc_channel_day where dt='${date:ymd}'
+union all
+select logtype,sid,uid,suid,type from web_tb
+union all
+ select 5 as logtype,sid,uid,if(wyy is null or wyy='',concat(uid,'-',ip), wyy) as suid,source as type from yule.yule_web_pcudau_raw
+ where  dt='${date:ymd}' and rel='H5' and dr>=10
+) p1
+left semi join 
+(select distinct sid from yule.yule_channel_type_day  where  dt='${date:y-m-d}') p2
+on p1.sid=p2.sid
+union all
+select logtype,sid,uid,suid,type from mob_chn
+) aa group by logtype,sid,uid,suid,type;
