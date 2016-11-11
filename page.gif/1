@@ -1,0 +1,94 @@
+为了计算vv，与有效vv相关的数据 
+现需要对手机端（b.gif）与pad端(h.gif)原进入频道协议进行调整：需新增以下4个字段（红色部分），其他逻辑无需调整，有问题请随时沟通~~
+
+
+一、手机端
+上报数据说明及格式:
+b.gif格式:心跳时间间隔3分钟
+字段	定义	上报key	备注
+sessid	会话Id	sed	每一次”进入频道”时生成的唯一id (前后台切换会生成新的id，
+如：切换到后台，相当于前台状态退出频道，后台状态进频道)
+type	行为类型	te	心跳1；进频道2；出频道3。缺省为1
+btype	后台行为类型	bte	不在后台0, 在后台 1
+appkey	应用key	ak	　
+ver	应用版本号	vr	　
+imei	设备号	ii	　
+mac	MAC地址	mc	　
+source	渠道来源	sr	　
+ip	　	ip	　
+sid	频道号	sd	　
+subsid	子频道	sbd	缺省为null
+uid	　	ud	　
+occurtime	行为发生时间（UNIX时间戳）	ot	10位
+dr	频道停留时长(单位:秒)	dr	生成sessid至上报时的时长
+network	网络类型	nt	0=其他/1=2G(GPRS)/2=3G/3=WIFI/4=4G
+is_change	是否前后台切换	ic	1代表前后台切换； 0代表常态（真实进退频道、心跳）
+total_sessid	总会话Id	tsed	每一次进入频道时生成的唯一id (前后台切换不变)
+total_dr	频道停留时长(单位:秒)	tdr	生成total_sessid至上报时的时长（即进频道至今总时长）
+
+
+
+
+上报例子:
+1、http://dataaq.yy.com/b.gif?ot=1440382401&sed=1&te=2&bte=0&&ak=sdfg31235&vr=3.14&ii=asdgege&mc=1e%3a43%3a34%3aa3&sr=11&ud=3&sd=5&sbd=11&dr=1&ip=0.0.0.0&in=%7B%22test%22%3A%22test%22%7D
+http://dataaq.yy.com/c.gif?ot=1440382401&sed=1&te=2&&ak=sdfg31235&vr=3.14&ii=asdgege&mc=1e%3a43%3a34%3aa3&sr=11&ud=3&sd=5&sbd=11&dr=1&ip=0.0.0.0&in=%7B%22test%22%3A%22test%22%7D
+2、可选post方式，post数据格式：ot=1440382401&sed=1&te=2&bte=0&ak=sdfg31235&vr=3.14&ii=asdgege&mc=1e%3a43%3a34%3aa3&sr=11&ud=3&sd=5&sbd=11&dr=1&ip=0.0.0.0&in=%7B%22test%22%3A%22test%22%7D
+
+ 协议b.gif的行为类型取值表：
+         
+事件	用户进入频道	用户不在后台,到达上报间隔	用户出前台（包括退出频道与切换到后台）	用户进入后台(当做进入一个特殊的频道) 	用户出后台（包括退出频道与切换到前台）	用户在后台, 到达上报间隔
+te(行为类型)	2	1	3	2	3	1
+bte(后台行为类型)	0	0	0	1	1	1
+
+
+上报规则:
+  b.gif:
+1、进频道后每隔3分钟发一个心跳包，type之为1
+2、进/出频道时分别发送一个type值为2/3的包
+3、用户进出频道（包括切换前后台），每次需要使用不同的会话sessid
+4、sessid生成规则：进频道时的时间戳、设备号、频道号、4位随机数拼接后，使用16位小写MD5加密。
+
+
+
+二、Pad端
+
+h.gif格式: 心跳时间间隔3分钟
+字段	定义	上报key	备注
+sessid	会话Id	sed	每一次”进入频道”时生成的唯一id (前后台切换会生成新的id，
+如：切换到后台，相当于前台状态退出频道，后台状态进频道)
+type	行为类型	te	心跳1；进频道2；出频道3。缺省为1
+btype	后台行为类型	bte	不在后台0, 在后台 1
+appkey	应用key	ak	　
+ver	应用版本号	vr	　
+imei	设备号	ii	　
+mac	MAC地址	mc	　
+source	渠道来源	sr	　
+ip	　	ip	　
+sid	频道号	sd	　
+subsid	子频道	sbd	缺省为null
+uid	　	ud	　
+occurtime	行为发生时间（UNIX时间戳）	ot	10位
+dr	频道停留时长(单位:秒)	dr	生成sessid至上报时的时长
+network	网络类型	nt	0=其他/1=2G(GPRS)/2=3G/3=WIFI/4=4G
+is_change	是否前后台切换	ic	1代表前后台切换； 0代表常态（真实进退频道、心跳） 
+total_sessid	总会话Id	tsed	每一次进入频道时生成的唯一id (前后台切换不变)
+total_dr	频道停留时长(单位:秒)	tdr	生成total_sessid至上报时的时长（即进频道至今总时长）
+
+
+上报例子:
+1、    http://dataaq.yy.com/h.gif?ot=1440382401&sed=1&te=2&bte=0&&ak=sdfg31235&vr=3.14&ii=asdgege&mc=1e%3a43%3a34%3aa3&sr=11&ud=3&sd=5&sbd=11&dr=1&ip=0.0.0.0&in=%7B%22test%22%3A%22test%22%7D
+2、可选post方式，post数据格式：ot=1440382401&sed=1&te=2&bte=0&ak=sdfg31235&vr=3.14&ii=asdgege&mc=1e%3a43%3a34%3aa3&sr=11&ud=3&sd=5&sbd=11&dr=1&ip=0.0.0.0&in=%7B%22test%22%3A%22test%22%7D
+ 
+ 协议h.gif的行为类型取值表：
+         
+事件	用户进入频道	用户不在后台,到达上报间隔	用户出前台（包括退出频道与切换到后台）	用户进入后台(当做进入一个特殊的频道) 	用户出后台（包括退出频道与切换到前台）	用户在后台, 到达上报间隔
+te(行为类型)	2	1	3	2	3	1
+bte(后台行为类型)	0	0	0	1	1	1
+ 
+ 
+上报规则:
+  h.gif:
+1、进频道后每隔3分钟发一个心跳包，type之为1
+2、进/出频道时分别发送一个type值为2/3的包
+3、用户进出频道（包括切换前后台），每次需要使用不同的会话sessid
+4、sessid生成规则：进频道时的时间戳、设备号、频道号、4位随机数拼接后，使用16位小写MD5加密。
