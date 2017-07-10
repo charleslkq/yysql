@@ -1,0 +1,31 @@
+install.packages('corrplot')​
+library(corrplot)​
+
+cdata<-read.csv("F:/top100_anchorid.csv",header = T)
+mode(cdata)
+
+names(data)
+data<-data.matrix(data)
+cor(data)
+data[,c(2,3,4,5,6,7,8,9,10,11,12)]
+data[,c(2,12)]
+
+cor(data[,c(2)],data[,c(12)])
+cor.test(data[,c(2)],data[,c(12)])
+
+通常1000个以上的样本P值都是显著的
+我们可以看到a与b之间的相关系数是0.1998，P值为0.0463。但是cor.test()函数并不能像cor()函数一样计算一个data frame中各个变量间的相关系数并给出结果，这给我们在进行多变量分析的时候带来了很大不便。
+虽然我们可以自己来写个函数来完成两两变量间的计算，但是还是太麻烦了。有没有现成的函数呢？有的。其实我们可以利用psych包中的corr.test()来完成这一任务。
+
+
+数据标准化
+data_zscore=scale(data)  
+M<-cor(data_zscore[,c(2,3,4,5,6,7,8,9,10,11,12)])
+矩阵图
+M<-cor(data[,c(2,3,4,5,6,7,8,9,10,11,12)]) #计算相关系数​
+
+par(ask=TRUE,cex=0.8)
+# ask=TRUE表示后边的图形在这个设定的面板上进行，cex=0.8表示数值大小为0.8倍
+corrplot(M,method="number",col="black")
+corrplot(corr = M)
+corrplot(corr = corr, method = 'color', order ="AOE", addCoef.col="grey")
